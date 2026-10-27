@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue,socks]>=21.0
+psycopg[binary]>=3.1
+starlette>=0.37
+uvicorn>=0.29
+tzdata
