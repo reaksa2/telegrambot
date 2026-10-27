@@ -12,15 +12,51 @@ Send `/start` and the buttons appear:
 ```
 [ 🍳 Breakfast ] [ 🍜 Lunch ]
 [ 🍲 Dinner ]    [ 📝 Other ]
-[ 📊 Report ] [ 🧾 My payments ] [ ↩️ Undo ]
+[ ☕ Coffee ] ...              <- buttons your group added with /addcat
+[ 📅 Today ] [ 📆 Week ] [ 📊 Report ]
+[ 🧾 My payments ] [ ✏️ Edit ] [ ↩️ Undo ]
 ```
 
 - Tap **Breakfast / Lunch / Dinner**, then type the amount: `20000` (riel) or `$2.5` (dollars).
 - Tap **Other**, then type amount + what it was: `15000 taxi`.
 - Or type in one line: `pay 20000៛ breakfast`, `pay $2.5 coffee`.
 - Khmer digits work too: `២០០០០៛`.
+- **Forgot to record one?** Add the day: `pay 20000 lunch yesterday`, `pay 15000 taxi 25/10`,
+  `pay 5000 2026-10-01`. Also works after a button: `20000 ម្សិលមិញ`.
 
 The report shows totals **by person** and **by comment**. Riel and dollars are added up separately.
+
+### More commands
+| Command | What it does |
+|---|---|
+| `/today` | Everyone's payments today |
+| `/week` | This week (Monday to today), with a total for each day |
+| `/report`, `/report 2026-09` | Month report |
+| `/mine` | Your own payments this month |
+| `/edit` | Your last 10 payments with ✏️ (change) and 🗑 (delete) buttons. After ✏️, type e.g. `25000`, `25000 latte` or `25000 yesterday` |
+| `/undo` | Delete your last payment |
+| `/budget 1500000`, `/budget $400` | Monthly budget for this group. The bot warns at **80%** and when it's **over**. `/budget` shows progress, `/budget off` removes it |
+| `/remind 21:00` | Every evening at 21:00, if nobody recorded anything that day, the bot sends a reminder. `/remind` shows it, `/remind off` stops it |
+| `/addcat ☕ Coffee` | Add your own button (up to 12 per group) |
+| `/delcat Coffee` | Remove it (`/delcat` lists them) |
+
+Budget, reminder and extra buttons are separate for each group. In a group, only the person who
+added a payment can change or delete it.
+
+**Tip:** in BotFather send `/setcommands`, choose your bot, and paste this so the commands show in the menu:
+```
+today - Today's payments
+week - This week's payments
+report - This month's report
+mine - My payments this month
+edit - Change or delete a payment
+undo - Delete my last payment
+budget - Monthly budget
+remind - Evening reminder
+addcat - Add a category button
+delcat - Remove a category button
+help - How to use
+```
 
 ### Groups (families)
 Each Telegram group keeps its own separate records:
@@ -105,6 +141,7 @@ Upload the new `bot.py` to GitHub and Render redeploys automatically. Your data 
 | `DB_PATH`          | `payments.db`     | SQLite file (only when no DATABASE_URL)       |
 | `BOT_TZ`           | `Asia/Phnom_Penh` | Time zone for days / month end                |
 | `DEFAULT_CURRENCY` | `KHR`             | Currency when no symbol typed (`KHR`/`USD`)   |
+| `KHR_PER_USD`      | `4000`            | Exchange rate used to add riel + dollars for the budget |
 | `CRON_SECRET`      | (empty = off)     | Password for the /cron/month-end address      |
 | `WEBHOOK_URL`      | (auto on Render)  | Public address; set only on hosts other than Render |
 | `PROXY`            | (empty)           | e.g. `socks5://127.0.0.1:1080` if Telegram is blocked |
