@@ -1,0 +1,724 @@
+[33mcommit 53aa5aa9d382189c628bdd0bcc8e71599b99a5f8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: reaksa2 <67280457+reaksa2@users.noreply.github.com>
+Date:   Tue Oct 27 16:19:02 2026 +0700
+
+     update fature 7 more
+
+[1mdiff --git a/README.md b/README.md[m
+[1mindex d7fedeb..561f747 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -12,16 +12,52 @@[m [mSend `/start` and the buttons appear:[m
+ ```[m
+ [ 🍳 Breakfast ] [ 🍜 Lunch ][m
+ [ 🍲 Dinner ]    [ 📝 Other ][m
+[31m-[ 📊 Report ] [ 🧾 My payments ] [ ↩️ Undo ][m
+[32m+[m[32m[ ☕ Coffee ] ...              <- buttons your group added with /addcat[m
+[32m+[m[32m[ 📅 Today ] [ 📆 Week ] [ 📊 Report ][m
+[32m+[m[32m[ 🧾 My payments ] [ ✏️ Edit ] [ ↩️ Undo ][m
+ ```[m
+ [m
+ - Tap **Breakfast / Lunch / Dinner**, then type the amount: `20000` (riel) or `$2.5` (dollars).[m
+ - Tap **Other**, then type amount + what it was: `15000 taxi`.[m
+ - Or type in one line: `pay 20000៛ breakfast`, `pay $2.5 coffee`.[m
+ - Khmer digits work too: `២០០០០៛`.[m
+[32m+[m[32m- **Forgot to record one?** Add the day: `pay 20000 lunch yesterday`, `pay 15000 taxi 25/10`,[m
+[32m+[m[32m  `pay 5000 2026-10-01`. Also works after a button: `20000 ម្សិលមិញ`.[m
+ [m
+ The report shows totals **by person** and **by comment**. Riel and dollars are added up separately.[m
+ [m
+[32m+[m[32m### More commands[m
+[32m+[m[32m| Command | What it does |[m
+[32m+[m[32m|---|---|[m
+[32m+[m[32m| `/today` | Everyone's payments today |[m
+[32m+[m[32m| `/week` | This week (Monday to today), with a total for each day |[m
+[32m+[m[32m| `/report`, `/report 2026-09` | Month report |[m
+[32m+[m[32m| `/mine` | Your own payments this month |[m
+[32m+[m[32m| `/edit` | Your last 10 payments with ✏️ (change) and 🗑 (delete) buttons. After ✏️, type e.g. `25000`, `25000 latte` or `25000 yesterday` |[m
+[32m+[m[32m| `/undo` | Delete your last payment |[m
+[32m+[m[32m| `/budget 1500000`, `/budget $400` | Monthly budget for this group. The bot warns at **80%** and when it's **over**. `/budget` shows progress, `/budget off` removes it |[m
+[32m+[m[32m| `/remind 21:00` | Every evening at 21:00, if nobody recorded anything that day, the bot sends a reminder. `/remind` shows it, `/remind off` stops it |[m
+[32m+[m[32m| `/addcat ☕ Coffee` | Add your own button (up to 12 per group) |[m
+[32m+[m[32m| `/delcat Coffee` | Remove it (`/delcat` lists them) |[m
+[32m+[m
+[32m+[m[32mBudget, reminder and extra buttons are separate for each group. In a group, only the person who[m
+[32m+[m[32madded a payment can change or delete it.[m
+[32m+[m
+[32m+[m[32m**Tip:** in BotFather send `/setcommands`, choose your bot, and paste this so the commands show in the menu:[m
+[32m+[m[32m```[m
+[32m+[m[32mtoday - Today's payments[m
+[32m+[m[32mweek - This week's payments[m
+[32m+[m[32mreport - This month's report[m
+[32m+[m[32mmine - My payments this month[m
+[32m+[m[32medit - Change or delete a payment[m
+[32m+[m[32mundo - Delete my last payment[m
+[32m+[m[32mbudget - Monthly budget[m
+[32m+[m[32mremind - Evening reminder[m
+[32m+[m[32maddcat - Add a category button[m
+[32m+[m[32mdelcat - Remove a category button[m
+[32m+[m[32mhelp - How to use[m
+[32m+[m[32m```[m
+[32m+[m
+ ### Groups (families)[m
+ Each Telegram group keeps its own separate records:[m
+ - **Family A's group** sees only Family A's payments, reports and month-end summary.[m
+[36m@@ -105,6 +141,7 @@[m [mUpload the new `bot.py` to GitHub and Render redeploys automatically. Your data[m
+ | `DB_PATH`          | `payments.db`     | SQLite file (only when no DATABASE_URL)       |[m
+ | `BOT_TZ`           | `Asia/Phnom_Penh` | Time zone for days / month end                |[m
+ | `DEFAULT_CURRENCY` | `KHR`             | Currency when no symbol typed (`KHR`/`USD`)   |[m
+[32m+[m[32m| `KHR_PER_USD`      | `4000`            | Exchange rate used to add riel + dollars for the budget |[m
+ | `CRON_SECRET`      | (empty = off)     | Password for the /cron/month-end address      |[m
+ | `WEBHOOK_URL`      | (auto on Render)  | Public address; set only on hosts other than Render |[m
+ | `PROXY`            | (empty)           | e.g. `socks5://127.0.0.1:1080` if Telegram is blocked |[m
+[1mdiff --git a/bot.py b/bot.py[m
+[1mindex 0eaa473..243be36 100644[m
+[1m--- a/bot.py[m
+[1m+++ b/bot.py[m
+[36m@@ -3,27 +3,38 @@[m [mTelegram Daily Payment Bot[m
+ --------------------------[m
+ Two ways to add a payment:[m
+ [m
+[31m-  1) Buttons:  tap 🍳 Breakfast / 🍜 Lunch / 🍲 Dinner / 📝 Other,[m
+[31m-               then type the amount (e.g. 20000 or $2.5).[m
+[32m+[m[32m  1) Buttons:  tap 🍳 Breakfast / 🍜 Lunch / 🍲 Dinner / 📝 Other (or a[m
+[32m+[m[32m               category the group added), then type the amount (e.g. 20000 or $2.5).[m
+                For Other you can add a word: "15000 taxi".[m
+ [m
+   2) Typing:   pay 20000៛ breakfast   |  payment 15000 dinner  |  pay $2.5 coffee[m
+ [m
+[32m+[m[32m  Forgot one? Add a date: "pay 20000 lunch yesterday", "pay 15000 taxi 25/10"[m
+[32m+[m[32m  (also works after a button tap: "20000 yesterday").[m
+[32m+[m
+ On the last day of every month (23:59 local time) the bot sends a report to[m
+ every chat: totals per person and per comment.[m
+ [m
+[31m-Commands (also on the buttons):[m
+[32m+[m[32mCommands (most are also on the buttons):[m
+   /start /help      - show buttons + how to use[m
+[32m+[m[32m  /today            - today's payments[m
+[32m+[m[32m  /week             - this week's payments (Monday to today)[m
+   /report           - this month's report so far[m
+   /report 2026-09   - report for a specific month[m
+   /mine             - your own payments this month[m
+[32m+[m[32m  /edit             - change or delete one of your recent payments[m
+   /undo             - delete your last payment[m
+[32m+[m[32m  /budget 1500000   - monthly budget for this chat (/budget off, /budget = status)[m
+[32m+[m[32m  /remind 21:00     - evening reminder if nothing was recorded today (/remind off)[m
+[32m+[m[32m  /addcat ☕ Coffee  - add your own category button[m
+[32m+[m[32m  /delcat Coffee    - remove it[m
+ [m
+ Groups:[m
+   Every Telegram group is its own separate book. Family A's group only sees[m
+   Family A's payments; Family B's group only sees Family B's. A private chat[m
+   with the bot is a personal book. The same person can be in several groups;[m
+[31m-  their payments are kept apart per group.[m
+[32m+[m[32m  their payments are kept apart per group. Budget, reminder and custom[m
+[32m+[m[32m  categories are also per group.[m
+ [m
+ Running:[m
+   - On your computer: no WEBHOOK_URL  -> the bot asks Telegram for messages (polling)[m
+[36m@@ -45,13 +56,20 @@[m [mimport os[m
+ import re[m
+ import sqlite3[m
+ from collections import defaultdict[m
+[31m-from datetime import datetime, time, timedelta[m
+[32m+[m[32mfrom datetime import date, datetime, time, timedelta[m
+ from zoneinfo import ZoneInfo[m
+ [m
+[31m-from telegram import ForceReply, ReplyKeyboardMarkup, Update[m
+[32m+[m[32mfrom telegram import ([m
+[32m+[m[32m    ForceReply,[m
+[32m+[m[32m    InlineKeyboardButton,[m
+[32m+[m[32m    InlineKeyboardMarkup,[m
+[32m+[m[32m    ReplyKeyboardMarkup,[m
+[32m+[m[32m    Update,[m
+[32m+[m[32m)[m
+ from telegram.constants import ParseMode[m
+ from telegram.ext import ([m
+     Application,[m
+[32m+[m[32m    CallbackQueryHandler,[m
+     CommandHandler,[m
+     ContextTypes,[m
+     MessageHandler,[m
+[36m@@ -61,10 +79,14 @@[m [mfrom telegram.ext import ([m
+ # ---------------- Settings (from environment variables) ----------------[m
+ TZ = ZoneInfo(os.getenv("BOT_TZ", "Asia/Phnom_Penh"))[m
+ DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "KHR").upper()  # KHR or USD[m
+[32m+[m[32mKHR_PER_USD = float(os.getenv("KHR_PER_USD", "4000"))  # used for budgets and sorting[m
+ DB_PATH = os.getenv("DB_PATH", "payments.db")[m
+ DATABASE_URL = os.getenv("DATABASE_URL")  # postgres://... -> use PostgreSQL[m
+ NO_COMMENT = "other"[m
+ PENDING_MINUTES = 10  # how long the bot waits for an amount after a button tap[m
+[32m+[m[32mDEFAULT_REMIND_AT = "21:00"[m
+[32m+[m[32mEDIT_LIST_SIZE = 10  # how many recent payments /edit shows[m
+[32m+[m[32mMAX_CATEGORIES = 12  # custom category buttons per chat[m
+ [m
+ # Online hosting (webhook mode). Render sets RENDER_EXTERNAL_URL automatically.[m
+ WEBHOOK_URL = (os.getenv("WEBHOOK_URL") or os.getenv("RENDER_EXTERNAL_URL") or "").rstrip("/")[m
+[36m@@ -78,19 +100,23 @@[m [mCATEGORY_BUTTONS = {[m
+     "🍲 Dinner": "dinner",[m
+     "📝 Other": "other",[m
+ }[m
+[32m+[m[32mBTN_TODAY = "📅 Today"[m
+[32m+[m[32mBTN_WEEK = "📆 Week"[m
+ BTN_REPORT = "📊 Report"[m
+ BTN_MINE = "🧾 My payments"[m
+[32m+[m[32mBTN_EDIT = "✏️ Edit"[m
+ BTN_UNDO = "↩️ Undo"[m
+[32m+[m[32mMENU_BUTTONS = {BTN_TODAY, BTN_WEEK, BTN_REPORT, BTN_MINE, BTN_EDIT, BTN_UNDO}[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef keyboard(chat_id):[m
+[32m+[m[32m    """Reply keyboard for one chat: built-in categories, the chat's own ones, then the menu."""[m
+[32m+[m[32m    rows = [["🍳 Breakfast", "🍜 Lunch"], ["🍲 Dinner", "📝 Other"]][m
+[32m+[m[32m    custom = [c["label"] for c in chat_categories(chat_id)][m
+[32m+[m[32m    rows += [custom[i:i + 3] for i in range(0, len(custom), 3)][m
+[32m+[m[32m    rows += [[BTN_TODAY, BTN_WEEK, BTN_REPORT], [BTN_MINE, BTN_EDIT, BTN_UNDO]][m
+[32m+[m[32m    return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True)[m
+ [m
+[31m-KEYBOARD = ReplyKeyboardMarkup([m
+[31m-    [[m
+[31m-        ["🍳 Breakfast", "🍜 Lunch"],[m
+[31m-        ["🍲 Dinner", "📝 Other"],[m
+[31m-        [BTN_REPORT, BTN_MINE, BTN_UNDO],[m
+[31m-    ],[m
+[31m-    resize_keyboard=True,[m
+[31m-    is_persistent=True,[m
+[31m-)[m
+ [m
+ # ---------------- Parsing ----------------[m
+ KEYWORD_RE = re.compile(r"^\s*(?:payment|pay)\b\s*(.*)$", re.IGNORECASE | re.DOTALL)[m
+[36m@@ -104,6 +130,12 @@[m [mAMOUNT_RE = re.compile([m
+ )[m
+ CURRENCY_WORDS = {"$": "USD", "usd": "USD", "៛": "KHR", "r": "KHR", "riel": "KHR", "khr": "KHR"}[m
+ [m
+[32m+[m[32m# Dates for payments added later: "yesterday", "25/10", "25/10/2026", "2026-10-25".[m
+[32m+[m[32m# ("." is not allowed as a separator, otherwise "2.5" would be a date.)[m
+[32m+[m[32mDATE_WORDS = {"today": 0, "ថ្ងៃនេះ": 0, "yesterday": 1, "ម្សិលមិញ": 1, "ម្សិលម៉ិញ": 1}[m
+[32m+[m[32mDMY_RE = re.compile(r"^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2}|\d{4}))?$")[m
+[32m+[m[32mISO_DATE_RE = re.compile(r"^(\d{4})-(\d{1,2})-(\d{1,2})$")[m
+[32m+[m
+ # Khmer digits -> normal digits, so "២០០០០៛" works too[m
+ KHMER_DIGITS = str.maketrans("០១២៣៤៥៦៧៨៩", "0123456789")[m
+ [m
+[36m@@ -113,11 +145,50 @@[m [mlogging.basicConfig([m
+ log = logging.getLogger("payment-bot")[m
+ [m
+ [m
+[32m+[m[32mdef today():[m
+[32m+[m[32m    return datetime.now(TZ).date()[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef parse_date(tok, ref):[m
+[32m+[m[32m    """'yesterday' / '25/10' / '2026-10-25' -> date, otherwise None. ref = today's date."""[m
+[32m+[m[32m    if tok.lower() in DATE_WORDS:[m
+[32m+[m[32m        return ref - timedelta(days=DATE_WORDS[tok.lower()])[m
+[32m+[m[32m    try:[m
+[32m+[m[32m        m = ISO_DATE_RE.match(tok)[m
+[32m+[m[32m        if m:[m
+[32m+[m[32m            return date(int(m[1]), int(m[2]), int(m[3]))[m
+[32m+[m[32m        m = DMY_RE.match(tok)[m
+[32m+[m[32m        if m:[m
+[32m+[m[32m            if m[3]:[m
+[32m+[m[32m                year = int(m[3]) + (2000 if len(m[3]) == 2 else 0)[m
+[32m+[m[32m                return date(year, int(m[2]), int(m[1]))[m
+[32m+[m[32m            d = date(ref.year, int(m[2]), int(m[1]))[m
+[32m+[m[32m            # "30/12" typed on 2 January means last December[m
+[32m+[m[32m            return d if d <= ref else date(ref.year - 1, d.month, d.day)[m
+[32m+[m[32m    except ValueError:  # 31/02 and the like[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    return None[m
+[32m+[m
+[32m+[m
+ def parse_amount_and_comment(text):[m
+[31m-    """'20000៛ breakfast' -> (20000.0, 'KHR', 'breakfast'); no amount -> (None, None, None)."""[m
+[32m+[m[32m    """'20000៛ breakfast yesterday' -> (20000.0, 'KHR', 'breakfast', date(...)).[m
+[32m+[m[32m    comment is '' when none was typed; day is None when no date was typed.[m
+[32m+[m[32m    No amount -> (None, None, None, None)."""[m
+     tokens = text.translate(KHMER_DIGITS).split()[m
+[31m-    amount, currency, used = None, None, set()[m
+[32m+[m[32m    used = set()[m
+[32m+[m
+[32m+[m[32m    day = None[m
+[32m+[m[32m    for i, tok in enumerate(tokens):[m
+[32m+[m[32m        d = parse_date(tok, today())[m
+[32m+[m[32m        if d is not None:[m
+[32m+[m[32m            day = d[m
+[32m+[m[32m            used.add(i)[m
+[32m+[m[32m            break[m
+[32m+[m
+[32m+[m[32m    amount, currency = None, None[m
+     for i, tok in enumerate(tokens):[m
+[32m+[m[32m        if i in used:[m
+[32m+[m[32m            continue[m
+         a = AMOUNT_RE.match(tok)[m
+         if not a:[m
+             continue[m
+[36m@@ -135,18 +206,27 @@[m [mdef parse_amount_and_comment(text):[m
+         break[m
+ [m
+     if amount is None:[m
+[31m-        return (None, None, None)[m
+[32m+[m[32m        return (None, None, None, None)[m
+     comment = " ".join(t for j, t in enumerate(tokens) if j not in used).strip().lower()[m
+[31m-    return amount, currency, comment or NO_COMMENT[m
+[32m+[m[32m    return amount, currency, comment, day[m
+ [m
+ [m
+ def parse_payment(text):[m
+[31m-    """'pay 20000៛ breakfast' -> (amount, currency, comment).[m
+[32m+[m[32m    """'pay 20000៛ breakfast' -> (amount, currency, comment, day).[m
+     None if the text doesn't start with pay/payment."""[m
+     m = KEYWORD_RE.match(text)[m
+     if not m:[m
+         return None[m
+[31m-    return parse_amount_and_comment(m.group(1))[m
+[32m+[m[32m    amount, currency, comment, day = parse_amount_and_comment(m.group(1))[m
+[32m+[m[32m    return amount, currency, comment or NO_COMMENT, day[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef parse_hhmm(text):[m
+[32m+[m[32m    """'21:00' / '9:30' / '21' -> '21:00', or None."""[m
+[32m+[m[32m    m = re.match(r"^(\d{1,2})(?::(\d{2}))?$", text.translate(KHMER_DIGITS))[m
+[32m+[m[32m    if not m or int(m[1]) > 23 or int(m[2] or 0) > 59:[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    return f"{int(m[1]):02d}:{int(m[2] or 0):02d}"[m
+ [m
+ [m
+ # ---------------- Database (SQLite or PostgreSQL) ----------------[m
+[36m@@ -219,21 +299,41 @@[m [mdef init_db():[m
+             run(f"ALTER TABLE payments ADD COLUMN currency TEXT NOT NULL DEFAULT '{DEFAULT_CURRENCY}'")[m
+         log.info("Storage: SQLite file %s", DB_PATH)[m
+     run("CREATE INDEX IF NOT EXISTS idx_chat_month ON payments(chat_id, month)")[m
+[32m+[m[32m    run("CREATE INDEX IF NOT EXISTS idx_chat_created ON payments(chat_id, created_at)")[m
+     # remembers which month-end reports were already sent, so none is sent twice[m
+     run([m
+         "CREATE TABLE IF NOT EXISTS report_log ("[m
+         " chat_id BIGINT NOT NULL, month TEXT NOT NULL, sent_at TEXT NOT NULL,"[m
+         " PRIMARY KEY (chat_id, month))"[m
+     )[m
+[32m+[m[32m    # one row per chat: monthly budget and evening reminder[m
+[32m+[m[32m    run([m
+[32m+[m[32m        "CREATE TABLE IF NOT EXISTS chat_settings ("[m
+[32m+[m[32m        " chat_id BIGINT PRIMARY KEY, budget DOUBLE PRECISION, budget_currency TEXT,"[m
+[32m+[m[32m        " remind_at TEXT, last_reminded TEXT)"[m
+[32m+[m[32m    )[m
+[32m+[m[32m    # extra category buttons a chat added with /addcat[m
+[32m+[m[32m    run([m
+[32m+[m[32m        "CREATE TABLE IF NOT EXISTS categories ("[m
+[32m+[m[32m        " chat_id BIGINT NOT NULL, label TEXT NOT NULL, note TEXT NOT NULL,"[m
+[32m+[m[32m        " created_at TEXT NOT NULL, PRIMARY KEY (chat_id, label))"[m
+[32m+[m[32m    )[m
+ [m
+ [m
+[31m-def add_payment(chat_id, user_id, user_name, amount, currency, note):[m
+[31m-    now = datetime.now(TZ)[m
+[32m+[m[32mdef payment_time(day=None):[m
+[32m+[m[32m    """When a payment happened: now, or the same clock time on an earlier day."""[m
+[32m+[m[32m    now = datetime.now(TZ).replace(microsecond=0)[m
+[32m+[m[32m    if day is None or day == now.date():[m
+[32m+[m[32m        return now[m
+[32m+[m[32m    return datetime.combine(day, now.time(), tzinfo=TZ)[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef add_payment(chat_id, user_id, user_name, amount, currency, note, when):[m
+     run([m
+         "INSERT INTO payments (chat_id, user_id, user_name, amount, currency, note, month, created_at) "[m
+         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",[m
+         (chat_id, user_id, user_name, amount, currency, note,[m
+[31m-         now.strftime("%Y-%m"), now.isoformat(timespec="seconds")),[m
+[32m+[m[32m         when.strftime("%Y-%m"), when.isoformat(timespec="seconds")),[m
+     )[m
+ [m
+ [m
+[36m@@ -243,7 +343,49 @@[m [mdef month_rows(chat_id, month, user_id=None):[m
+     if user_id is not None:[m
+         sql += " AND user_id=?"[m
+         args.append(user_id)[m
+[31m-    return run(sql + " ORDER BY id", args, fetch="all")[m
+[32m+[m[32m    return run(sql + " ORDER BY created_at, id", args, fetch="all")[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef rows_between(chat_id, start, end):[m
+[32m+[m[32m    """Payments from day `start` up to (not including) day `end`."""[m
+[32m+[m[32m    return run([m
+[32m+[m[32m        "SELECT * FROM payments WHERE chat_id=? AND created_at>=? AND created_at<? "[m
+[32m+[m[32m        "ORDER BY created_at, id",[m
+[32m+[m[32m        (chat_id, start.isoformat(), end.isoformat()),[m
+[32m+[m[32m        fetch="all",[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef recent_payments(chat_id, user_id, limit=EDIT_LIST_SIZE):[m
+[32m+[m[32m    return run([m
+[32m+[m[32m        "SELECT * FROM payments WHERE chat_id=? AND user_id=? ORDER BY id DESC LIMIT ?",[m
+[32m+[m[32m        (chat_id, user_id, limit),[m
+[32m+[m[32m        fetch="all",[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef own_payment(payment_id, chat_id, user_id):[m
+[32m+[m[32m    """The payment, but only if it belongs to this person in this chat."""[m
+[32m+[m[32m    return run([m
+[32m+[m[32m        "SELECT * FROM payments WHERE id=? AND chat_id=? AND user_id=?",[m
+[32m+[m[32m        (payment_id, chat_id, user_id),[m
+[32m+[m[32m        fetch="one",[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef update_payment(payment_id, amount, currency, note, when):[m
+[32m+[m[32m    run([m
+[32m+[m[32m        "UPDATE payments SET amount=?, currency=?, note=?, month=?, created_at=? WHERE id=?",[m
+[32m+[m[32m        (amount, currency, note, when.strftime("%Y-%m"), when.isoformat(timespec="seconds"), payment_id),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef delete_payment(payment_id, chat_id, user_id):[m
+[32m+[m[32m    return run([m
+[32m+[m[32m        "DELETE FROM payments WHERE id=? AND chat_id=? AND user_id=? RETURNING amount, currency, note",[m
+[32m+[m[32m        (payment_id, chat_id, user_id),[m
+[32m+[m[32m        fetch="one",[m
+[32m+[m[32m    )[m
+ [m
+ [m
+ def delete_last(chat_id, user_id):[m
+[36m@@ -259,8 +401,8 @@[m [mdef delete_last(chat_id, user_id):[m
+ def migrate_chat(old_chat_id, new_chat_id):[m
+     """A normal group that becomes a 'supergroup' gets a NEW chat id from Telegram.[m
+     Move its history to the new id so the family keeps one continuous record."""[m
+[31m-    run("UPDATE payments SET chat_id=? WHERE chat_id=?", (new_chat_id, old_chat_id))[m
+[31m-    run("UPDATE report_log SET chat_id=? WHERE chat_id=?", (new_chat_id, old_chat_id))[m
+[32m+[m[32m    for table in ("payments", "report_log", "chat_settings", "categories"):[m
+[32m+[m[32m        run(f"UPDATE {table} SET chat_id=? WHERE chat_id=?", (new_chat_id, old_chat_id))[m
+ [m
+ [m
+ def report_already_sent(chat_id, month):[m
+[36m@@ -278,6 +420,48 @@[m [mdef chats_with_payments(month):[m
+     return [r["chat_id"] for r in rows][m
+ [m
+ [m
+[32m+[m[32mSETTING_FIELDS = {"budget", "budget_currency", "remind_at", "last_reminded"}[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef get_settings(chat_id):[m
+[32m+[m[32m    return run("SELECT * FROM chat_settings WHERE chat_id=?", (chat_id,), fetch="one")[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef save_settings(chat_id, **fields):[m
+[32m+[m[32m    cols = list(fields)[m
+[32m+[m[32m    assert set(cols) <= SETTING_FIELDS[m
+[32m+[m[32m    run([m
+[32m+[m[32m        f"INSERT INTO chat_settings (chat_id, {', '.join(cols)}) VALUES (?{', ?' * len(cols)}) "[m
+[32m+[m[32m        f"ON CONFLICT (chat_id) DO UPDATE SET " + ", ".join(f"{c}=excluded.{c}" for c in cols),[m
+[32m+[m[32m        (chat_id, *fields.values()),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef chats_to_remind(day):[m
+[32m+[m[32m    return run([m
+[32m+[m[32m        "SELECT chat_id, remind_at FROM chat_settings WHERE remind_at IS NOT NULL "[m
+[32m+[m[32m        "AND (last_reminded IS NULL OR last_reminded<>?)",[m
+[32m+[m[32m        (day.isoformat(),),[m
+[32m+[m[32m        fetch="all",[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef chat_categories(chat_id):[m
+[32m+[m[32m    return run("SELECT label, note FROM categories WHERE chat_id=? ORDER BY created_at",[m
+[32m+[m[32m               (chat_id,), fetch="all")[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef add_category(chat_id, label, note):[m
+[32m+[m[32m    run("INSERT INTO categories (chat_id, label, note, created_at) VALUES (?, ?, ?, ?) "[m
+[32m+[m[32m        "ON CONFLICT (chat_id, label) DO NOTHING",[m
+[32m+[m[32m        (chat_id, label, note, datetime.now(TZ).isoformat(timespec="seconds")))[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef delete_category(chat_id, name):[m
+[32m+[m[32m    return run("DELETE FROM categories WHERE chat_id=? AND (label=? OR note=?) RETURNING label",[m
+[32m+[m[32m               (chat_id, name, name.lower()), fetch="one")[m
+[32m+[m
+[32m+[m
+ # ---------------- Formatting ----------------[m
+ def money(amount, currency):[m
+     if currency == "USD":[m
+[36m@@ -291,10 +475,20 @@[m [mdef totals_text(totals):[m
+     return " + ".join(parts) if parts else money(0, DEFAULT_CURRENCY)[m
+ [m
+ [m
+[32m+[m[32mdef convert(totals, currency):[m
+[32m+[m[32m    """{'KHR': 40000, 'USD': 5} -> one number in `currency`, using KHR_PER_USD."""[m
+[32m+[m[32m    khr = totals.get("KHR", 0) + totals.get("USD", 0) * KHR_PER_USD[m
+[32m+[m[32m    return khr if currency == "KHR" else khr / KHR_PER_USD[m
+[32m+[m
+[32m+[m
+ def month_label(month):[m
+     return datetime.strptime(month, "%Y-%m").strftime("%B %Y")[m
+ [m
+ [m
+[32m+[m[32mdef short_day(created_at):[m
+[32m+[m[32m    return datetime.fromisoformat(created_at).strftime("%d %b")[m
+[32m+[m
+[32m+[m
+ def summarize(rows, key):[m
+     """Group rows by key -> sorted [(group, {'n': count, 'totals': {cur: sum}})]."""[m
+     groups = defaultdict(lambda: {"n": 0, "totals": defaultdict(float)})[m
+[36m@@ -302,23 +496,13 @@[m [mdef summarize(rows, key):[m
+         g = groups[key(r)][m
+         g["n"] += 1[m
+         g["totals"][r["currency"]] += r["amount"][m
+[31m-    # biggest first (rough riel-equivalent: KHR + USD*4000)[m
+[31m-    return sorted([m
+[31m-        groups.items(),[m
+[31m-        key=lambda kv: -(kv[1]["totals"].get("KHR", 0) + kv[1]["totals"].get("USD", 0) * 4000),[m
+[31m-    )[m
+[31m-[m
+[32m+[m[32m    return sorted(groups.items(), key=lambda kv: -convert(kv[1]["totals"], "KHR"))  # biggest first[m
+ [m
+[31m-def build_report(chat_id, month, chat_title=None):[m
+[31m-    rows = month_rows(chat_id, month)[m
+[31m-    title = f"📊 <b>Payment report – {month_label(month)}</b>"[m
+[31m-    if chat_title:[m
+[31m-        title += f"\n👨‍👩‍👧 {html.escape(chat_title)}"[m
+[31m-    if not rows:[m
+[31m-        return f"{title}\n\nNo payments recorded."[m
+ [m
+[32m+[m[32mdef summary_lines(rows):[m
+[32m+[m[32m    """'By person', 'By comment' and the grand total for a list of payments."""[m
+     names = {r["user_id"]: r["user_name"] for r in rows}  # latest name wins[m
+[31m-    lines = [title, "", "👤 <b>By person</b>"][m
+[32m+[m[32m    lines = ["👤 <b>By person</b>"][m
+     for i, (uid, g) in enumerate(summarize(rows, lambda r: r["user_id"]), 1):[m
+         lines.append([m
+             f"{i}. {html.escape(names[uid])}: <b>{totals_text(g['totals'])}</b> ({g['n']})"[m
+[36m@@ -332,9 +516,62 @@[m [mdef build_report(chat_id, month, chat_title=None):[m
+     for r in rows:[m
+         grand[r["currency"]] += r["amount"][m
+     lines += ["", f"💰 <b>Total: {totals_text(grand)}</b> ({len(rows)} payments)"][m
+[32m+[m[32m    return lines[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef chat_heading(title, chat_title):[m
+[32m+[m[32m    if chat_title:[m
+[32m+[m[32m        title += f"\n👨‍👩‍👧 {html.escape(chat_title)}"[m
+[32m+[m[32m    return title[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef build_report(chat_id, month, chat_title=None):[m
+[32m+[m[32m    rows = month_rows(chat_id, month)[m
+[32m+[m[32m    title = chat_heading(f"📊 <b>Payment report – {month_label(month)}</b>", chat_title)[m
+[32m+[m[32m    if not rows:[m
+[32m+[m[32m        return f"{title}\n\nNo payments recorded."[m
+[32m+[m[32m    lines = [title, ""] + summary_lines(rows)[m
+[32m+[m[32m    if month == datetime.now(TZ).strftime("%Y-%m"):[m
+[32m+[m[32m        budget = budget_text(chat_id)[m
+[32m+[m[32m        if budget:[m
+[32m+[m[32m            lines += ["", budget][m
+     return "\n".join(lines)[m
+ [m
+ [m
+[32m+[m[32mdef build_today_report(chat_id, chat_title=None):[m
+[32m+[m[32m    day = today()[m
+[32m+[m[32m    rows = rows_between(chat_id, day, day + timedelta(days=1))[m
+[32m+[m[32m    title = chat_heading(f"📅 <b>Today – {day:%a %d %b %Y}</b>", chat_title)[m
+[32m+[m[32m    if not rows:[m
+[32m+[m[32m        return f"{title}\n\nNo payments recorded today."[m
+[32m+[m[32m    lines = [title, "", "🧾 <b>Payments</b>"][m
+[32m+[m[32m    for r in rows:[m
+[32m+[m[32m        lines.append([m
+[32m+[m[32m            f"{datetime.fromisoformat(r['created_at']):%H:%M} {html.escape(r['user_name'])}: "[m
+[32m+[m[32m            f"{money(r['amount'], r['currency'])} – {html.escape(r['note'] or NO_COMMENT)}"[m
+[32m+[m[32m        )[m
+[32m+[m[32m    return "\n".join(lines + [""] + summary_lines(rows))[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef build_week_report(chat_id, chat_title=None):[m
+[32m+[m[32m    end = today()[m
+[32m+[m[32m    start = end - timedelta(days=end.weekday())  # Monday[m
+[32m+[m[32m    rows = rows_between(chat_id, start, end + timedelta(days=1))[m
+[32m+[m[32m    title = chat_heading(f"📆 <b>This week – {start:%d %b} to {end:%d %b}</b>", chat_title)[m
+[32m+[m[32m    if not rows:[m
+[32m+[m[32m        return f"{title}\n\nNo payments recorded this week."[m
+[32m+[m[32m    per_day = defaultdict(lambda: defaultdict(float))[m
+[32m+[m[32m    for r in rows:[m
+[32m+[m[32m        per_day[r["created_at"][:10]][r["currency"]] += r["amount"][m
+[32m+[m[32m    lines = [title, "", "📅 <b>By day</b>"][m
+[32m+[m[32m    d = start[m
+[32m+[m[32m    while d <= end:[m
+[32m+[m[32m        totals = per_day.get(d.isoformat())[m
+[32m+[m[32m        lines.append(f"{d:%a %d %b}: {totals_text(totals) if totals else '–'}")[m
+[32m+[m[32m        d += timedelta(days=1)[m
+[32m+[m[32m    return "\n".join(lines + [""] + summary_lines(rows))[m
+[32m+[m
+[32m+[m
+ def build_user_detail(chat_id, user_id, month):[m
+     rows = month_rows(chat_id, month, user_id)[m
+     if not rows:[m
+[36m@@ -359,6 +596,51 @@[m [mdef display_name(user):[m
+     return user.full_name or str(user.id)[m
+ [m
+ [m
+[32m+[m[32mdef mention(user):[m
+[32m+[m[32m    """Clickable name; also makes a ForceReply reach this person in a group."""[m
+[32m+[m[32m    return f'<a href="tg://user?id={user.id}">{html.escape(user.first_name or display_name(user))}</a>'[m
+[32m+[m
+[32m+[m
+[32m+[m[32m# ---------------- Budget ----------------[m
+[32m+[m[32mdef budget_status(chat_id, month=None):[m
+[32m+[m[32m    """(spent, budget, currency) for the month, or None when no budget is set."""[m
+[32m+[m[32m    s = get_settings(chat_id)[m
+[32m+[m[32m    if not s or not s["budget"]:[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    month = month or datetime.now(TZ).strftime("%Y-%m")[m
+[32m+[m[32m    totals = defaultdict(float)[m
+[32m+[m[32m    for r in month_rows(chat_id, month):[m
+[32m+[m[32m        totals[r["currency"]] += r["amount"][m
+[32m+[m[32m    return convert(totals, s["budget_currency"]), s["budget"], s["budget_currency"][m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef budget_text(chat_id):[m
+[32m+[m[32m    status = budget_status(chat_id)[m
+[32m+[m[32m    if status is None:[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    spent, budget, cur = status[m
+[32m+[m[32m    pct = spent / budget * 100[m
+[32m+[m[32m    filled = min(10, round(pct / 10))[m
+[32m+[m[32m    bar = "▓" * filled + "░" * (10 - filled)[m
+[32m+[m[32m    rest = f"{money(budget - spent, cur)} left" if spent <= budget else f"over by {money(spent - budget, cur)}"[m
+[32m+[m[32m    return f"🎯 <b>Budget:</b> {money(spent, cur)} / {money(budget, cur)} ({pct:.0f}%)\n{bar} {rest}"[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef budget_alert(chat_id, amount, currency, month):[m
+[32m+[m[32m    """Warning text when this payment pushed the month past 80% or 100% of the budget."""[m
+[32m+[m[32m    if month != datetime.now(TZ).strftime("%Y-%m"):[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    status = budget_status(chat_id, month)[m
+[32m+[m[32m    if status is None:[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    after, budget, cur = status[m
+[32m+[m[32m    before = after - convert({currency: amount}, cur)[m
+[32m+[m[32m    for share, text in ((1.0, "🚨 <b>Over budget!</b>"), (0.8, "⚠️ <b>80% of this month's budget is used.</b>")):[m
+[32m+[m[32m        if before < share * budget <= after:[m
+[32m+[m[32m            return f"{text}\n{budget_text(chat_id)}"[m
+[32m+[m[32m    return None[m
+[32m+[m
+[32m+[m
+ # ---------------- Handlers ----------------[m
+ HELP_TEXT = ([m
+     "👋 Hi! I record daily payments.\n\n"[m
+[36m@@ -366,96 +648,154 @@[m [mHELP_TEXT = ([m
+     "Or type it in one line:\n"[m
+     "  pay 20000៛ breakfast\n"[m
+     "  pay $2.5 coffee\n\n"[m
+[32m+[m[32m    "Forgot one? Add the date:\n"[m
+[32m+[m[32m    "  pay 20000 lunch yesterday\n"[m
+[32m+[m[32m    "  pay 15000 taxi 25/10\n\n"[m
+[32m+[m[32m    "More:\n"[m
+[32m+[m[32m    "  /today, /week, /report – totals\n"[m
+[32m+[m[32m    "  /edit – change or delete a payment\n"[m
+[32m+[m[32m    "  /budget 1500000 – monthly budget\n"[m
+[32m+[m[32m    "  /remind 21:00 – evening reminder\n"[m
+[32m+[m[32m    "  /addcat ☕ Coffee – your own button\n\n"[m
+     "A full report is sent automatically on the last day of each month."[m
+ )[m
+ [m
+ [m
+ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):[m
+[31m-    await update.message.reply_text(HELP_TEXT, reply_markup=KEYBOARD)[m
+[32m+[m[32m    await update.message.reply_text(HELP_TEXT, reply_markup=keyboard(update.effective_chat.id))[m
+ [m
+ [m
+[31m-async def save_and_confirm(update, amount, currency, note):[m
+[32m+[m[32masync def save_and_confirm(update, amount, currency, note, day=None):[m
+     msg = update.message[m
+[32m+[m[32m    kb = keyboard(msg.chat_id)[m
+     if amount <= 0:[m
+[31m-        await msg.reply_text("Amount must be more than 0.", reply_markup=KEYBOARD)[m
+[32m+[m[32m        await msg.reply_text("Amount must be more than 0.", reply_markup=kb)[m
+[32m+[m[32m        return[m
+[32m+[m[32m    if day is not None and day > today():[m
+[32m+[m[32m        await msg.reply_text("The date can't be in the future.", reply_markup=kb)[m
+         return[m
+     user = msg.from_user[m
+[31m-    add_payment(msg.chat_id, user.id, display_name(user), amount, currency, note)[m
+[32m+[m[32m    when = payment_time(day)[m
+[32m+[m[32m    add_payment(msg.chat_id, user.id, display_name(user), amount, currency, note, when)[m
+ [m
+[31m-    month = datetime.now(TZ).strftime("%Y-%m")[m
+[32m+[m[32m    month = when.strftime("%Y-%m")[m
+     total = defaultdict(float)[m
+     for r in month_rows(msg.chat_id, month, user.id):[m
+         total[r["currency"]] += r["amount"][m
+ [m
+[31m-    await msg.reply_text([m
+[31m-        f"✅ Saved {money(amount, currency)} – {note}\n"[m
+[31m-        f"Your total this month: {totals_text(total)}",[m
+[31m-        reply_markup=KEYBOARD,[m
+[32m+[m[32m    dated = "" if when.date() == today() else f" ({when:%d %b})"[m
+[32m+[m[32m    period = "this month" if month == datetime.now(TZ).strftime("%Y-%m") else f"in {month_label(month)}"[m
+[32m+[m[32m    text = ([m
+[32m+[m[32m        f"✅ Saved {money(amount, currency)} – {html.escape(note)}{dated}\n"[m
+[32m+[m[32m        f"Your total {period}: {totals_text(total)}"[m
+     )[m
+[32m+[m[32m    alert = budget_alert(msg.chat_id, amount, currency, month)[m
+[32m+[m[32m    if alert:[m
+[32m+[m[32m        text += f"\n\n{alert}"[m
+[32m+[m[32m    await msg.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=kb)[m
+ [m
+ [m
+ def pending_key(chat_id):[m
+     return f"pending:{chat_id}"[m
+ [m
+ [m
+[32m+[m[32mdef edit_key(chat_id):[m
+[32m+[m[32m    return f"edit:{chat_id}"[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef clear_pending(context, chat_id):[m
+[32m+[m[32m    context.user_data.pop(pending_key(chat_id), None)[m
+[32m+[m[32m    context.user_data.pop(edit_key(chat_id), None)[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef custom_category(chat_id, text):[m
+[32m+[m[32m    for c in chat_categories(chat_id):[m
+[32m+[m[32m        if c["label"] == text:[m
+[32m+[m[32m            return c["note"][m
+[32m+[m[32m    return None[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef is_fresh(since):[m
+[32m+[m[32m    return datetime.now(TZ) - since <= timedelta(minutes=PENDING_MINUTES)[m
+[32m+[m
+[32m+[m
+ async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):[m
+     msg = update.message[m
+     if not msg or not msg.text:[m
+         return[m
+     text = msg.text.strip()[m
+[31m-    key = pending_key(msg.chat_id)[m
+[31m-[m
+[31m-    # --- button taps ---[m
+[31m-    if text in CATEGORY_BUTTONS:[m
+[31m-        category = CATEGORY_BUTTONS[text][m
+[31m-        context.user_data[key] = (category, datetime.now(TZ))[m
+[32m+[m[32m    chat_id = msg.chat_id[m
+[32m+[m
+[32m+[m[32m    # --- menu buttons ---[m
+[32m+[m[32m    menu = {[m
+[32m+[m[32m        BTN_TODAY: today_cmd, BTN_WEEK: week_cmd, BTN_REPORT: report_cmd,[m
+[32m+[m[32m        BTN_MINE: mine_cmd, BTN_EDIT: edit_cmd, BTN_UNDO: undo_cmd,[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if text in menu:[m
+[32m+[m[32m        clear_pending(context, chat_id)[m
+[32m+[m[32m        return await menu[text](update, context)[m
+[32m+[m
+[32m+[m[32m    # --- category buttons (built-in or added with /addcat) ---[m
+[32m+[m[32m    category = CATEGORY_BUTTONS.get(text) or custom_category(chat_id, text)[m
+[32m+[m[32m    if category:[m
+[32m+[m[32m        clear_pending(context, chat_id)[m
+[32m+[m[32m        context.user_data[pending_key(chat_id)] = (category, datetime.now(TZ))[m
+         example = "15000 taxi" if category == "other" else "20000"[m
+         await msg.reply_text([m
+[31m-            f"{text} – how much? Type the amount, e.g. {example}\n(add $ for dollars: $2.5)",[m
+[32m+[m[32m            f"{text} – how much? Type the amount, e.g. {example}\n"[m
+[32m+[m[32m            "(add $ for dollars: $2.5; add yesterday or 25/10
