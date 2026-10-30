@@ -1059,8 +1059,8 @@ async def send_reminders(bot, now=None):
         if now.strftime("%H:%M") < r["remind_at"]:
             continue
         chat_id = r["chat_id"]
-        save_settings(chat_id, last_reminded=day.isoformat())  # at most once a day
         if rows_between(chat_id, day, day + timedelta(days=1)):
+            save_settings(chat_id, last_reminded=day.isoformat())
             continue  # already recorded something today
         try:
             await bot.send_message(
@@ -1072,6 +1072,8 @@ async def send_reminders(bot, now=None):
             sent += 1
         except Exception as e:  # bot removed from group, etc.
             log.warning("Could not send reminder to %s: %s", chat_id, e)
+            continue
+        save_settings(chat_id, last_reminded=day.isoformat())
     return sent
 
 
